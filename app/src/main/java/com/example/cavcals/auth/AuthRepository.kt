@@ -1,11 +1,19 @@
 package com.example.cavcals.auth
 
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.auth.FirebaseUser
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.tasks.await
+
+/**
+ * The signed-in account as the rest of the app sees it. Screens use this small app-owned type
+ * instead of Firebase's FirebaseUser, so Firebase classes stay inside this repository.
+ */
+data class SignedInUser(
+    val uid: String,
+    val email: String?,
+)
 
 /**
  * The single place in the app that talks to Firebase Authentication.
@@ -24,16 +32,16 @@ object AuthRepository {
     // Start with the user Firebase already restored from disk. Reading it synchronously here
     // means a relaunch with a saved session goes straight to the signed-in screen instead of
     // flashing the login form first.
-    private val _currentUser = MutableStateFlow(firebaseAuth.currentUser)
+    private val _currentUser = MutableStateFlow(firebaseAuth.toSignedInUser())
 
-    /** The signed-in Firebase user, or null when signed out. Firebase is the source of truth. */
-    val currentUser: StateFlow<FirebaseUser?> = _currentUser.asStateFlow()
+    /** The signed-in user, or null when signed out. Firebase is the source of truth. */
+    val currentUser: StateFlow<SignedInUser?> = _currentUser.asStateFlow()
 
     init {
         // Firebase calls this listener whenever the session changes (sign-in, sign-out, or the
         // session becoming invalid). Copying the user into the StateFlow lets Compose react to it.
         firebaseAuth.addAuthStateListener { auth ->
-            _currentUser.value = auth.currentUser
+            _currentUser.value = auth.toSignedInUser()
         }
     }
 
@@ -51,4 +59,8 @@ object AuthRepository {
     suspend fun signIn(email: String, password: String) {
         firebaseAuth.signInWithEmailAndPassword(email, password).await()
     }
+
+    // Copy only the fields the app needs out of Firebase's user object.
+    private fun FirebaseAuth.toSignedInUser(): SignedInUser? =
+        currentUser?.let { user -> SignedInUser(uid = user.uid, email = user.email) }
 }
