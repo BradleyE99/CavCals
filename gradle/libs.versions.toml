@@ -12,7 +12,9 @@ composeBom = "2026.02.01"
 # Stay on 34.x until the project upgrades Kotlin.
 firebaseBom = "34.19.0"
 googleServices = "4.5.0"
-coroutinesPlayServices = "1.11.0"
+# Match the kotlinx-coroutines version Compose/Lifecycle already use (1.9.0). Newer versions pull
+# coroutines-core built for a newer Kotlin than this project's 2.2 toolchain.
+coroutinesPlayServices = "1.9.0"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
