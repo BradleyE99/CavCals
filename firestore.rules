@@ -1,0 +1,32 @@
+rules_version = '2';
+
+// Deploy with: firebase deploy --only firestore:rules
+// This REPLACES whatever rules are in the Firebase console, so check with your teammate first.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Each user can read and write only their own profile and meals.
+    match /users/{uid} {
+      allow read, write: if request.auth != null && request.auth.uid == uid;
+
+      match /meals/{mealId} {
+        allow read, write: if request.auth != null && request.auth.uid == uid;
+      }
+    }
+
+    // Read-only food catalog. The analyzeMeal function fills it with the Admin SDK,
+    // which bypasses these rules, so no client ever needs write access.
+    match /foods/{foodId} {
+      allow read: if request.auth != null;
+      allow write: if false;
+    }
+
+    // Groups and shared meals are the next milestone. Locked until those rules are designed.
+    match /groups/{groupId} {
+      allow read, write: if false;
+    }
+    match /sharedMeals/{postId} {
+      allow read, write: if false;
+    }
+  }
+}

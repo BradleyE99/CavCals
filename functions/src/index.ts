@@ -1,0 +1,121 @@
+// analyzeMeal: photo in, per-item macros + plate totals out.
+//
+//   Android app --(base64 photo)--> analyzeMeal
+//       1. Claude vision  -> [{ name, usda_query, grams_est }]
+//       2. USDA FDC       -> per-100 g macros (cached in foods/{foodId})
+//       3. scale + sum    -> items[] and totals
+//
+// The photo is only held in memory for this request and never stored,
+// matching the "Photo privacy" promise in the slides.
+import Anthropic from "@anthropic-ai/sdk";
+import { initializeApp } from "firebase-admin/app";
+import { defineSecret } from "firebase-functions/params";
+import { HttpsError, onCall } from "firebase-functions/v2/https";
+import { logger } from "firebase-functions";
+import { detectFoods, type MediaType } from "./vision.js";
+import { lookupFood, type Macros } from "./usda.js";
+
+initializeApp();
+
+const ANTHROPIC_API_KEY = defineSecret("ANTHROPIC_API_KEY");
+const USDA_API_KEY = defineSecret("USDA_API_KEY");
+
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024; // Claude's per-image limit
+const ALLOWED_TYPES: MediaType[] = ["image/jpeg", "image/png", "image/webp"];
+
+interface AnalyzeRequest {
+  imageBase64: string;
+  mediaType?: MediaType;
+}
+
+export interface AnalyzedItem {
+  name: string; // what Claude saw, e.g. "Grilled chicken breast"
+  foodId: string | null; // foods/{foodId}, null if USDA had no match
+  usdaName: string | null;
+  fdcId: number | null;
+  grams: number; // Claude's estimate; the user can edit this in the app
+  confidence: "low" | "medium" | "high";
+  per100g: Macros | null; // send this back down so the client can rescale
+  macros: Macros | null; // per100g * grams / 100
+}
+
+const round1 = (x: number) => Math.round(x * 10) / 10;
+
+export function scale(per100g: Macros, grams: number): Macros {
+  const f = grams / 100;
+  return {
+    calories: round1(per100g.calories * f),
+    protein: round1(per100g.protein * f),
+    fat: round1(per100g.fat * f),
+    carbs: round1(per100g.carbs * f),
+  };
+}
+
+export function sum(list: Macros[]): Macros {
+  const t = list.reduce(
+    (a, m) => ({ calories: a.calories + m.calories, protein: a.protein + m.protein, fat: a.fat + m.fat, carbs: a.carbs + m.carbs }),
+    { calories: 0, protein: 0, fat: 0, carbs: 0 },
+  );
+  return { calories: round1(t.calories), protein: round1(t.protein), fat: round1(t.fat), carbs: round1(t.carbs) };
+}
+
+export const analyzeMeal = onCall(
+  {
+    secrets: [ANTHROPIC_API_KEY, USDA_API_KEY],
+    timeoutSeconds: 120,
+    memory: "512MiB",
+    // enforceAppCheck: true,  // turn on once App Check is set up, to block non-app callers
+  },
+  async (request) => {
+    if (!request.auth) throw new HttpsError("unauthenticated", "Sign in first.");
+
+    const { imageBase64, mediaType = "image/jpeg" } = (request.data ?? {}) as AnalyzeRequest;
+    if (typeof imageBase64 !== "string" || imageBase64.length === 0) {
+      throw new HttpsError("invalid-argument", "imageBase64 is required.");
+    }
+    if (!ALLOWED_TYPES.includes(mediaType)) {
+      throw new HttpsError("invalid-argument", `mediaType must be one of ${ALLOWED_TYPES.join(", ")}.`);
+    }
+    if (Math.floor((imageBase64.length * 3) / 4) > MAX_IMAGE_BYTES) {
+      throw new HttpsError("invalid-argument", "Image is over 5 MB. Downscale it on the device first.");
+    }
+
+    const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
+
+    let detected;
+    try {
+      detected = await detectFoods(client, imageBase64, mediaType);
+    } catch (err) {
+      logger.error("vision step failed", err);
+      throw new HttpsError("internal", "Couldn't analyze the photo. Try again.");
+    }
+    if (detected.length === 0) {
+      return { items: [], totals: sum([]), message: "No food detected in this photo." };
+    }
+
+    const items: AnalyzedItem[] = await Promise.all(
+      detected.map(async (d) => {
+        const grams = Math.round(d.grams_est);
+        try {
+          const food = await lookupFood(d.usda_query, USDA_API_KEY.value());
+          return {
+            name: d.name,
+            foodId: food?.foodId ?? null,
+            usdaName: food?.name ?? null,
+            fdcId: food?.fdcId ?? null,
+            grams,
+            confidence: d.confidence,
+            per100g: food?.per100g ?? null,
+            macros: food ? scale(food.per100g, grams) : null,
+          };
+        } catch (err) {
+          logger.warn(`USDA lookup failed for "${d.usda_query}"`, err);
+          return { name: d.name, foodId: null, usdaName: null, fdcId: null, grams, confidence: d.confidence, per100g: null, macros: null };
+        }
+      }),
+    );
+
+    const totals = sum(items.flatMap((i) => (i.macros ? [i.macros] : [])));
+    return { items, totals };
+  },
+);
