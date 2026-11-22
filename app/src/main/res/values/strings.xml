@@ -21,7 +21,49 @@
     <string name="login_error_too_many_requests">Too many attempts. Wait a moment and try again.</string>
     <string name="login_error_unknown">Something went wrong while logging in. Please try again.</string>
 
-    <!-- Signed-in placeholder -->
+    <!-- Bottom navigation -->
+    <string name="tab_calendar">Calendar</string>
+    <string name="tab_home">Home</string>
+    <string name="tab_macro">Macro</string>
+
+    <!-- Analyze Macros (Home tab) -->
     <string name="analyze_macros_title">Analyze Macros</string>
     <string name="analyze_macros_signed_in_as">Signed in as %1$s</string>
+    <string name="analyze_photo_placeholder">Take a photo of your meal, or choose one from your gallery.</string>
+    <string name="analyze_photo_description">Your meal photo</string>
+    <string name="analyze_take_photo">Take photo</string>
+    <string name="analyze_choose_photo">Choose photo</string>
+    <string name="analyze_in_progress">Analyzing your meal…</string>
+    <string name="analyze_found_title">What we found</string>
+    <string name="analyze_found_hint">Portion size is a guess from the photo. Fix the grams and the totals update.</string>
+    <string name="analyze_matched_as">USDA match: %1$s</string>
+    <string name="analyze_low_confidence">Low confidence. Please check this one.</string>
+    <string name="analyze_grams_label">Grams</string>
+    <string name="analyze_no_match">No nutrition match found for this food.</string>
+    <string name="analyze_totals_title">Meal total</string>
+    <string name="analyze_save">Save meal</string>
+    <string name="analyze_saving">Saving…</string>
+    <string name="analyze_saved">Saved</string>
+    <string name="analyze_start_over">Scan another</string>
+    <string name="analyze_error_no_food">No food found in this photo. Try another angle or better light.</string>
+    <string name="analyze_error_network">Can\'t reach the server. Check your connection and try again.</string>
+    <string name="analyze_error_not_deployed">The meal analyzer isn\'t deployed yet. Deploy the analyzeMeal Cloud Function.</string>
+    <string name="analyze_error_signed_out">Your session expired. Sign in again.</string>
+    <string name="analyze_error_bad_photo">Couldn\'t read that photo. Try a different one.</string>
+    <string name="analyze_error_unknown">Couldn\'t analyze the photo. Please try again.</string>
+    <string name="analyze_error_save">Couldn\'t save the meal. Please try again.</string>
+
+    <!-- Calendar tab (Profile) -->
+    <string name="profile_title">Your meals</string>
+    <string name="profile_day_totals">Day total</string>
+    <string name="profile_loading">Loading meals…</string>
+    <string name="profile_load_failed">Couldn\'t load meals. Check your connection and Firestore rules.</string>
+    <string name="profile_no_meals">No meals saved on this day.</string>
+    <string name="profile_sign_out">Sign out</string>
+    <string name="profile_pick_ok">OK</string>
+    <string name="profile_pick_cancel">Cancel</string>
+
+    <!-- Macro tab -->
+    <string name="compare_title">Macro comparison</string>
+    <string name="compare_coming_soon">Coming next: compare your day against your targets and your friends in your groups.</string>
 </resources>

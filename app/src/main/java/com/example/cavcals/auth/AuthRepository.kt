@@ -60,6 +60,14 @@ object AuthRepository {
         firebaseAuth.signInWithEmailAndPassword(email, password).await()
     }
 
+    /**
+     * Signs out. Like sign-in, nothing navigates here: the auth state listener publishes null,
+     * and MainActivity swaps the signed-in app for the Login screen on its own.
+     */
+    fun signOut() {
+        firebaseAuth.signOut()
+    }
+
     // Copy only the fields the app needs out of Firebase's user object.
     private fun FirebaseAuth.toSignedInUser(): SignedInUser? =
         currentUser?.let { user -> SignedInUser(uid = user.uid, email = user.email) }

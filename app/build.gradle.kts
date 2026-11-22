@@ -49,6 +49,9 @@ dependencies {
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(platform(libs.firebase.bom))
     implementation(libs.firebase.auth)
+    // Firestore stores saved meals (users/{uid}/meals). Functions calls the analyzeMeal backend.
+    implementation(libs.firebase.firestore)
+    implementation(libs.firebase.functions)
     implementation(libs.kotlinx.coroutines.play.services)
     testImplementation(libs.junit)
     androidTestImplementation(platform(libs.androidx.compose.bom))

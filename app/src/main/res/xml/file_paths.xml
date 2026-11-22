@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Lets the camera app write meal photos into our private cache through FileProvider. -->
+<paths>
+    <cache-path name="meal_photos" path="meal_photos/" />
+</paths>
