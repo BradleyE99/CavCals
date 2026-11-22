@@ -11,6 +11,8 @@
     <string name="login_hide_password_description">Hide password</string>
     <string name="login_button">Log in</string>
     <string name="login_in_progress">Logging in</string>
+    <string name="login_or">or</string>
+    <string name="login_google_button">Sign in with Google</string>
 
     <!-- Login validation and Firebase errors -->
     <string name="login_error_email_blank">Enter your email.</string>
@@ -19,6 +21,8 @@
     <string name="login_error_invalid_credentials">Email or password is incorrect. Check them and try again.</string>
     <string name="login_error_network">Can\'t reach the server. Check your connection and try again.</string>
     <string name="login_error_too_many_requests">Too many attempts. Wait a moment and try again.</string>
+    <string name="login_error_google_no_account">No Google account found on this device. Add one in Settings, then try again.</string>
+    <string name="login_error_google_failed">Google sign-in didn\'t work. Please try again.</string>
     <string name="login_error_unknown">Something went wrong while logging in. Please try again.</string>
 
     <!-- Bottom navigation -->

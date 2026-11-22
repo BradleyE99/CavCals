@@ -15,6 +15,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Button
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -25,6 +26,7 @@ import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.LiveRegionMode
 import androidx.compose.ui.semantics.contentDescription
@@ -54,6 +56,9 @@ fun LoginScreen(
     // Collect the ViewModel's StateFlow as Compose state. Each new LoginUiState triggers a
     // recomposition, and collection pauses while the app is in the background.
     val uiState by loginViewModel.uiState.collectAsStateWithLifecycle()
+    // Inside an Activity's setContent, LocalContext is that Activity. Google's account picker
+    // needs it to draw on top of the app.
+    val context = LocalContext.current
 
     // Pass function references instead of the ViewModel itself: the form sends events up and
     // the ViewModel decides what they mean.
@@ -62,6 +67,7 @@ fun LoginScreen(
         onEmailChange = loginViewModel::onEmailChange,
         onPasswordChange = loginViewModel::onPasswordChange,
         onLoginClick = loginViewModel::onLoginClick,
+        onGoogleSignInClick = { loginViewModel.onGoogleSignInClick(context) },
         modifier = modifier,
     )
 }
@@ -72,6 +78,7 @@ fun LoginForm(
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
     onLoginClick: () -> Unit,
+    onGoogleSignInClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
     // Whether the password is shown is purely visual, so it lives here rather than in the
@@ -181,6 +188,22 @@ fun LoginForm(
                 Text(stringResource(R.string.login_button))
             }
         }
+
+        Text(
+            text = stringResource(R.string.login_or),
+            style = MaterialTheme.typography.bodyMedium,
+        )
+
+        // Same isLoading guard as the email button, so only one sign-in runs at a time.
+        OutlinedButton(
+            onClick = onGoogleSignInClick,
+            enabled = !uiState.isLoading,
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(48.dp),
+        ) {
+            Text(stringResource(R.string.login_google_button))
+        }
     }
 }
 
@@ -196,6 +219,7 @@ private fun LoginFormPreview() {
             onEmailChange = {},
             onPasswordChange = {},
             onLoginClick = {},
+            onGoogleSignInClick = {},
         )
     }
 }

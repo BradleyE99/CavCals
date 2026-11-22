@@ -1,6 +1,7 @@
 package com.example.cavcals.auth
 
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.auth.GoogleAuthProvider
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -58,6 +59,19 @@ object AuthRepository {
      */
     suspend fun signIn(email: String, password: String) {
         firebaseAuth.signInWithEmailAndPassword(email, password).await()
+    }
+
+    /**
+     * Signs in with a Google account.
+     *
+     * The Login screen asks Google (through Credential Manager) for an ID token, which is Google's
+     * signed proof of "this person owns this Google account." Firebase checks that proof and
+     * creates or reuses the matching Firebase user. As with email sign-in, nothing is returned:
+     * the auth state listener publishes the new user and the app switches screens on its own.
+     */
+    suspend fun signInWithGoogle(idToken: String) {
+        val credential = GoogleAuthProvider.getCredential(idToken, null)
+        firebaseAuth.signInWithCredential(credential).await()
     }
 
     /**
