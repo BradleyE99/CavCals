@@ -1,0 +1,47 @@
+{
+  "project_info": {
+    "project_number": "859493508852",
+    "project_id": "cavcals",
+    "storage_bucket": "cavcals.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:859493508852:android:ed11a9b81960dd25faa0a1",
+        "android_client_info": {
+          "package_name": "com.example.cavcals"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "859493508852-475i0amo234a424vn617lo688l9h5i8a.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.cavcals",
+            "certificate_hash": "87ba748310c40a2a122578739226bf492b065105"
+          }
+        },
+        {
+          "client_id": "859493508852-tk47hjcr0ijuaihcl95j5nfcll9kvmlh.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyBmv3puhzkm0DZafGtAKsS6YAxB66uS0Ks"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "859493508852-tk47hjcr0ijuaihcl95j5nfcll9kvmlh.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
