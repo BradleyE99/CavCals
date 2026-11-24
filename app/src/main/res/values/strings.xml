@@ -63,6 +63,7 @@
     <string name="analyze_error_not_deployed">The meal analyzer isn\'t deployed yet. Deploy the analyzeMeal Cloud Function.</string>
     <string name="analyze_error_signed_out">Your session expired. Sign in again.</string>
     <string name="analyze_error_bad_photo">Couldn\'t read that photo. Try a different one.</string>
+    <string name="analyze_error_daily_limit">You\'ve reached today\'s scan limit. Try again tomorrow.</string>
     <string name="analyze_error_unknown">Couldn\'t analyze the photo. Please try again.</string>
     <string name="analyze_error_save">Couldn\'t save the meal. Please try again.</string>
 

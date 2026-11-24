@@ -6,6 +6,7 @@ import android.graphics.BitmapFactory
 import android.graphics.Matrix
 import android.media.ExifInterface
 import android.net.Uri
+import android.util.Log
 import androidx.annotation.StringRes
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.viewModelScope
@@ -18,9 +19,13 @@ import com.google.firebase.FirebaseNetworkException
 import com.google.firebase.functions.FirebaseFunctionsException
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.drop
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
@@ -55,12 +60,31 @@ class AnalyzeViewModel(application: Application) : AndroidViewModel(application)
     private val _uiState = MutableStateFlow(AnalyzeUiState())
     val uiState: StateFlow<AnalyzeUiState> = _uiState.asStateFlow()
 
+    /** The scan or save in progress, so it can be cancelled when the account changes. */
+    private var work: Job? = null
+
+    init {
+        // This ViewModel lives as long as the activity, so it survives sign-out. Without this,
+        // the next person to sign in would see the previous user's photo and results.
+        // drop(1) skips the user who is signed in when the screen first opens.
+        viewModelScope.launch {
+            AuthRepository.currentUser
+                .map { it?.uid }
+                .distinctUntilChanged()
+                .drop(1)
+                .collect {
+                    work?.cancel()
+                    _uiState.value = AnalyzeUiState()
+                }
+        }
+    }
+
     /** Called with the photo from the camera or the gallery. */
     fun onPhotoSelected(uri: Uri) {
         if (_uiState.value.isAnalyzing) return
         _uiState.value = AnalyzeUiState(isAnalyzing = true)
 
-        viewModelScope.launch {
+        work = viewModelScope.launch {
             try {
                 // Decoding a 12 MP photo is slow, so it runs off the main thread.
                 val bitmap = withContext(Dispatchers.IO) { decodeUpright(uri) }
@@ -79,6 +103,11 @@ class AnalyzeViewModel(application: Application) : AndroidViewModel(application)
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                // The on-screen message is deliberately generic, so log the real cause for
+                // debugging. For a Functions error, `code` and `details` say what the server
+                // returned; the photo itself is never logged.
+                val code = (e as? FirebaseFunctionsException)?.code
+                Log.w(TAG, "Analyze failed (code=$code): ${e.javaClass.simpleName}: ${e.message}", e)
                 _uiState.update { it.copy(isAnalyzing = false, errorMessage = messageFor(e)) }
             }
         }
@@ -109,13 +138,14 @@ class AnalyzeViewModel(application: Application) : AndroidViewModel(application)
         if (state.isSaving || state.isSaved || analysis.items.isEmpty()) return
 
         _uiState.update { it.copy(isSaving = true, errorMessage = null) }
-        viewModelScope.launch {
+        work = viewModelScope.launch {
             try {
                 MealRepository.saveMeal(uid, labelForNow(), analysis)
                 _uiState.update { it.copy(isSaving = false, isSaved = true) }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
+                Log.w(TAG, "Saving the meal failed: ${e.javaClass.simpleName}: ${e.message}", e)
                 _uiState.update { it.copy(isSaving = false, errorMessage = R.string.analyze_error_save) }
             }
         }
@@ -144,6 +174,8 @@ class AnalyzeViewModel(application: Application) : AndroidViewModel(application)
             R.string.analyze_error_network
         error is FirebaseFunctionsException && error.code == FirebaseFunctionsException.Code.UNAUTHENTICATED ->
             R.string.analyze_error_signed_out
+        error is FirebaseFunctionsException && error.code == FirebaseFunctionsException.Code.RESOURCE_EXHAUSTED ->
+            R.string.analyze_error_daily_limit
         error is FirebaseFunctionsException && error.code == FirebaseFunctionsException.Code.INVALID_ARGUMENT ->
             R.string.analyze_error_bad_photo
         error is IllegalStateException -> R.string.analyze_error_bad_photo
@@ -183,5 +215,9 @@ class AnalyzeViewModel(application: Application) : AndroidViewModel(application)
         if (degrees == 0f) return bitmap
         val matrix = Matrix().apply { postRotate(degrees) }
         return Bitmap.createBitmap(bitmap, 0, 0, bitmap.width, bitmap.height, matrix, true)
+    }
+
+    private companion object {
+        const val TAG = "AnalyzeViewModel"
     }
 }

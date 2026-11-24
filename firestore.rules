@@ -21,6 +21,12 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Daily scan counters for the analyzeMeal limit. Only the function writes them (the
+    // Admin SDK bypasses rules). Clients get no access, so nobody can reset their own count.
+    match /usage/{uid}/{document=**} {
+      allow read, write: if false;
+    }
+
     // Groups and shared meals are the next milestone. Locked until those rules are designed.
     match /groups/{groupId} {
       allow read, write: if false;

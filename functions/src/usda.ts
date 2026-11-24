@@ -32,7 +32,7 @@ interface SearchNutrient {
   unitName?: string;
   value?: number;
 }
-interface SearchFood {
+export interface SearchFood {
   fdcId: number;
   description: string;
   dataType: string;
@@ -48,7 +48,7 @@ export function foodIdFor(query: string): string {
     .slice(0, 120);
 }
 
-function extractMacros(food: SearchFood): Macros | null {
+export function extractMacros(food: SearchFood): Macros | null {
   const byId = new Map<number, number>();
   for (const n of food.foodNutrients ?? []) {
     if (typeof n.value === "number" && (n.unitName ?? "").toUpperCase() !== "KJ") {

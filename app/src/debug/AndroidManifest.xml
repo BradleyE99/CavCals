@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: merged into the main manifest. Release builds keep Android's defaults. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <!-- Android 17 (API 37) blocks apps from reaching local network addresses, which includes
+         10.0.2.2 (the laptop as seen from the Android emulator), unless they hold this
+         permission. It's only needed to reach the local Firebase emulator. It's a runtime
+         permission, so grant it once per device with:
+             adb shell pm grant com.example.cavcals android.permission.ACCESS_LOCAL_NETWORK
+         The grant survives reinstalls, but not an uninstall. -->
+    <uses-permission android:name="android.permission.ACCESS_LOCAL_NETWORK" />
+
+    <!-- The local Firebase emulator speaks plain HTTP, which Android blocks by default. -->
+    <application android:networkSecurityConfig="@xml/network_security_config" />
+</manifest>

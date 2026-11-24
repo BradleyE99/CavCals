@@ -68,6 +68,9 @@ $$
 | `functions/src/index.ts` | `analyzeMeal` callable: auth check, input validation, orchestration, scaling |
 | `functions/src/vision.ts` | Claude call with a strict JSON schema (structured outputs) |
 | `functions/src/usda.ts` | USDA search, macro extraction, Firestore cache |
+| `functions/src/macros.ts` | Scaling and plate totals (pure, unit-tested) |
+| `functions/src/quota.ts` | Per-user daily scan limit |
+| `functions/src/test/` | Unit tests (`npm test`) |
 | `app/.../analyze/MealAnalyzer.kt` | Downscale + upload photo, parse result, local rescale (already wired into the app) |
 
 ## Setup (about 15 minutes)
@@ -94,7 +97,30 @@ $$
 6. **Android:** already done. `AnalyzeViewModel` calls `MealAnalyzer.analyze(bitmap)` after the user picks a photo.
 7. **Saving a meal:** already done. `MealRepository.saveMeal` writes the confirmed items and totals to `users/{uid}/meals/{mealId}`. The photo is never saved.
 
-**Test locally first:** `npm run serve` starts the emulator. In the app, call `Firebase.functions.useEmulator("10.0.2.2", 5001)` before the first call (10.0.2.2 is your laptop from the Android emulator).
+## Test locally (no deploy, no Blaze plan needed)
+
+```
+Android emulator (app) ──▶ 10.0.2.2:5001 ──▶ Functions emulator on your laptop
+                                               ├─▶ real Claude API (your key, ~1–2¢ per scan)
+                                               ├─▶ real USDA API (free)
+                                               └─▶ Firestore emulator :8080 (food cache + scan counts)
+```
+
+1. **Keys:** copy `functions/.secret.local.example` to `functions/.secret.local` and fill in both keys. That file is git-ignored.
+2. **Start the emulators:** `cd functions && npm run serve`. Wait for "All emulators ready". The Emulator UI at http://127.0.0.1:4000 shows function logs and the local Firestore. `firebase login` isn't needed for this.
+3. **Point the app at it:** add `cavcals.useFunctionsEmulator=true` to `local.properties` (repo root), then rebuild and run the **debug** build. Logcat shows `Using Functions emulator at 10.0.2.2:5001`. Remove the line, or set it to `false`, to go back to the deployed function. Release builds always use the deployed function.
+4. **Sign in normally** with a real account. The Functions emulator accepts real sign-ins, so no Auth emulator is needed. Saved meals still go to the real Firestore; only the function's own data is local.
+5. **Add a photo:** drag a food `.jpg` onto the emulator window (it lands in Downloads and shows in the photo picker). You can also run `adb push plate.jpg /sdcard/Pictures/`, or set the virtual device's back camera to **Webcam0** in Device Manager → Edit → Advanced to photograph a real plate.
+
+**Physical phone instead:** set `cavcals.emulatorHost=<your laptop's LAN IP>` in `local.properties`, add that IP to `app/src/debug/res/xml/network_security_config.xml`, and start the emulators with `--host 0.0.0.0`. You may also need to allow port 5001 through the Windows firewall.
+
+## Unit tests
+
+`cd functions && npm test` runs the macro math, USDA parsing, and quota date tests. No network or keys needed.
+
+## Daily scan limit
+
+Each user gets `DAILY_SCAN_LIMIT` (30) scans per UTC day, counted in `usage/{uid}/days/{yyyy-mm-dd}` before Claude runs. Past the limit the function returns `resource-exhausted` and the app shows "You've reached today's scan limit." Change the number in `functions/src/quota.ts`. In the emulator, delete the day's document in the Emulator UI to reset it.
 
 ## Cost
 

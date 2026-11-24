@@ -1,8 +1,22 @@
+import java.util.Properties
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.google.services)
 }
+
+// Per-developer settings from local.properties (never committed). To test against the
+// local Firebase emulator instead of the deployed function, add this line there:
+//     cavcals.useFunctionsEmulator=true
+// Optional: cavcals.emulatorHost=192.168.1.20 for a physical phone (default 10.0.2.2, which
+// is the laptop as seen from the Android emulator).
+val localProps = Properties().apply {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) file.inputStream().use { load(it) }
+}
+val useFunctionsEmulator = localProps.getProperty("cavcals.useFunctionsEmulator")?.toBoolean() ?: false
+val emulatorHost = localProps.getProperty("cavcals.emulatorHost") ?: "10.0.2.2"
 
 android {
     namespace = "com.example.cavcals"
@@ -21,7 +35,14 @@ android {
     }
 
     buildTypes {
+        debug {
+            buildConfigField("boolean", "USE_FUNCTIONS_EMULATOR", useFunctionsEmulator.toString())
+            buildConfigField("String", "EMULATOR_HOST", "\"$emulatorHost\"")
+        }
         release {
+            // Release builds always use the deployed function, whatever local.properties says.
+            buildConfigField("boolean", "USE_FUNCTIONS_EMULATOR", "false")
+            buildConfigField("String", "EMULATOR_HOST", "\"\"")
             optimization {
                 enable = false
             }
@@ -33,6 +54,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 }
 

@@ -2,6 +2,8 @@ package com.example.cavcals.analyze
 
 import android.graphics.Bitmap
 import android.util.Base64
+import android.util.Log
+import com.example.cavcals.BuildConfig
 import com.google.firebase.functions.FirebaseFunctions
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.tasks.await
@@ -58,6 +60,15 @@ data class MealAnalysis(val items: List<MealItem>) {
  */
 object MealAnalyzer {
     private val callable = FirebaseFunctions.getInstance()
+        .apply {
+            // Debug builds can point at the Firebase emulator on the laptop (see the
+            // cavcals.useFunctionsEmulator note in app/build.gradle.kts). This must run before
+            // the first call, which is why it sits where the instance is first created.
+            if (BuildConfig.USE_FUNCTIONS_EMULATOR) {
+                Log.i("MealAnalyzer", "Using Functions emulator at ${BuildConfig.EMULATOR_HOST}:5001")
+                useEmulator(BuildConfig.EMULATOR_HOST, 5001)
+            }
+        }
         .getHttpsCallable("analyzeMeal")
         .apply { setTimeout(120, TimeUnit.SECONDS) }
 

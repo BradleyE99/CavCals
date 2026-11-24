@@ -14,6 +14,8 @@ import { HttpsError, onCall } from "firebase-functions/v2/https";
 import { logger } from "firebase-functions";
 import { detectFoods, type MediaType } from "./vision.js";
 import { lookupFood, type Macros } from "./usda.js";
+import { scale, sum } from "./macros.js";
+import { DAILY_SCAN_LIMIT, tryConsumeScan } from "./quota.js";
 
 initializeApp();
 
@@ -39,26 +41,6 @@ export interface AnalyzedItem {
   macros: Macros | null; // per100g * grams / 100
 }
 
-const round1 = (x: number) => Math.round(x * 10) / 10;
-
-export function scale(per100g: Macros, grams: number): Macros {
-  const f = grams / 100;
-  return {
-    calories: round1(per100g.calories * f),
-    protein: round1(per100g.protein * f),
-    fat: round1(per100g.fat * f),
-    carbs: round1(per100g.carbs * f),
-  };
-}
-
-export function sum(list: Macros[]): Macros {
-  const t = list.reduce(
-    (a, m) => ({ calories: a.calories + m.calories, protein: a.protein + m.protein, fat: a.fat + m.fat, carbs: a.carbs + m.carbs }),
-    { calories: 0, protein: 0, fat: 0, carbs: 0 },
-  );
-  return { calories: round1(t.calories), protein: round1(t.protein), fat: round1(t.fat), carbs: round1(t.carbs) };
-}
-
 export const analyzeMeal = onCall(
   {
     secrets: [ANTHROPIC_API_KEY, USDA_API_KEY],
@@ -78,6 +60,12 @@ export const analyzeMeal = onCall(
     }
     if (Math.floor((imageBase64.length * 3) / 4) > MAX_IMAGE_BYTES) {
       throw new HttpsError("invalid-argument", "Image is over 5 MB. Downscale it on the device first.");
+    }
+
+    // Checked after input validation (a malformed request shouldn't use up a scan)
+    // and before Claude runs (that's the part that costs money).
+    if (!(await tryConsumeScan(request.auth.uid))) {
+      throw new HttpsError("resource-exhausted", `Daily limit of ${DAILY_SCAN_LIMIT} scans reached. Try again tomorrow.`);
     }
 
     const client = new Anthropic({ apiKey: ANTHROPIC_API_KEY.value() });
