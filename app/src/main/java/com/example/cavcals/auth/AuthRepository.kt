@@ -62,6 +62,16 @@ object AuthRepository {
     }
 
     /**
+     * Creates a new email/password account. Firebase signs the new user in right away, so the
+     * auth state listener publishes them and the app moves to the signed-in screen on its own,
+     * exactly like [signIn]. Failures (email already used, weak password, no network) are thrown
+     * as Firebase exceptions for the ViewModel to translate.
+     */
+    suspend fun createAccount(email: String, password: String) {
+        firebaseAuth.createUserWithEmailAndPassword(email, password).await()
+    }
+
+    /**
      * Signs in with a Google account.
      *
      * The Login screen asks Google (through Credential Manager) for an ID token, which is Google's

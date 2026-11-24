@@ -66,7 +66,9 @@ fun LoginScreen(
         uiState = uiState,
         onEmailChange = loginViewModel::onEmailChange,
         onPasswordChange = loginViewModel::onPasswordChange,
-        onLoginClick = loginViewModel::onLoginClick,
+        onConfirmPasswordChange = loginViewModel::onConfirmPasswordChange,
+        onSubmitClick = loginViewModel::onSubmitClick,
+        onToggleModeClick = loginViewModel::onToggleModeClick,
         onGoogleSignInClick = { loginViewModel.onGoogleSignInClick(context) },
         modifier = modifier,
     )
@@ -77,10 +79,14 @@ fun LoginForm(
     uiState: LoginUiState,
     onEmailChange: (String) -> Unit,
     onPasswordChange: (String) -> Unit,
-    onLoginClick: () -> Unit,
+    onConfirmPasswordChange: (String) -> Unit,
+    onSubmitClick: () -> Unit,
+    onToggleModeClick: () -> Unit,
     onGoogleSignInClick: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
+    val isCreate = uiState.isCreateAccountMode
+
     // Whether the password is shown is purely visual, so it lives here rather than in the
     // ViewModel. It starts as false so the password is masked by default, and rememberSaveable
     // keeps the choice across rotation.
@@ -96,7 +102,7 @@ fun LoginForm(
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Text(
-            text = stringResource(R.string.login_title),
+            text = stringResource(if (isCreate) R.string.signup_title else R.string.login_title),
             style = MaterialTheme.typography.headlineMedium,
         )
 
@@ -146,14 +152,39 @@ fun LoginForm(
                     )
                 }
             },
+            // In create mode the keyboard moves on to Confirm password; otherwise Done submits.
             keyboardOptions = KeyboardOptions(
                 keyboardType = KeyboardType.Password,
-                imeAction = ImeAction.Done,
+                imeAction = if (isCreate) ImeAction.Next else ImeAction.Done,
             ),
             // Pressing Done on the keyboard sends the same event as tapping Log in.
-            keyboardActions = KeyboardActions(onDone = { onLoginClick() }),
+            keyboardActions = KeyboardActions(onDone = { onSubmitClick() }),
             modifier = Modifier.fillMaxWidth(),
         )
+
+        if (isCreate) {
+            OutlinedTextField(
+                value = uiState.confirmPassword,
+                onValueChange = onConfirmPasswordChange,
+                label = { Text(stringResource(R.string.signup_confirm_password_label)) },
+                isError = uiState.confirmPasswordError != null,
+                supportingText = uiState.confirmPasswordError?.let { { Text(stringResource(it)) } },
+                singleLine = true,
+                enabled = !uiState.isLoading,
+                // Follows the same Show/Hide toggle as the password field above.
+                visualTransformation = if (isPasswordVisible) {
+                    VisualTransformation.None
+                } else {
+                    PasswordVisualTransformation()
+                },
+                keyboardOptions = KeyboardOptions(
+                    keyboardType = KeyboardType.Password,
+                    imeAction = ImeAction.Done,
+                ),
+                keyboardActions = KeyboardActions(onDone = { onSubmitClick() }),
+                modifier = Modifier.fillMaxWidth(),
+            )
+        }
 
         // The Firebase error is announced by screen readers when it appears (live region).
         uiState.loginError?.let { messageId ->
@@ -169,9 +200,11 @@ fun LoginForm(
 
         // Disabled while loading so one tap sends exactly one Firebase request. It re-enables
         // when the request fails, which is how the user retries.
-        val loadingDescription = stringResource(R.string.login_in_progress)
+        val loadingDescription = stringResource(
+            if (isCreate) R.string.signup_in_progress else R.string.login_in_progress
+        )
         Button(
-            onClick = onLoginClick,
+            onClick = onSubmitClick,
             enabled = !uiState.isLoading,
             modifier = Modifier
                 .fillMaxWidth()
@@ -185,8 +218,19 @@ fun LoginForm(
                         .semantics { contentDescription = loadingDescription },
                 )
             } else {
-                Text(stringResource(R.string.login_button))
+                Text(stringResource(if (isCreate) R.string.signup_button else R.string.login_button))
             }
+        }
+
+        TextButton(
+            onClick = onToggleModeClick,
+            enabled = !uiState.isLoading,
+        ) {
+            Text(
+                stringResource(
+                    if (isCreate) R.string.signup_switch_to_login else R.string.login_switch_to_signup
+                )
+            )
         }
 
         Text(
@@ -218,7 +262,29 @@ private fun LoginFormPreview() {
             ),
             onEmailChange = {},
             onPasswordChange = {},
-            onLoginClick = {},
+            onConfirmPasswordChange = {},
+            onSubmitClick = {},
+            onToggleModeClick = {},
+            onGoogleSignInClick = {},
+        )
+    }
+}
+
+@Preview(showBackground = true)
+@Composable
+private fun CreateAccountFormPreview() {
+    CavCalsTheme {
+        LoginForm(
+            uiState = LoginUiState(
+                email = "student@example.com",
+                isCreateAccountMode = true,
+                confirmPasswordError = R.string.signup_error_password_mismatch,
+            ),
+            onEmailChange = {},
+            onPasswordChange = {},
+            onConfirmPasswordChange = {},
+            onSubmitClick = {},
+            onToggleModeClick = {},
             onGoogleSignInClick = {},
         )
     }
